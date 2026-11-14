@@ -1,0 +1,77 @@
+@prefix lv2:  <http://lv2plug.in/ns/lv2core#> .
+@prefix pset: <http://lv2plug.in/ns/ext/presets#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+@prefix ember: <https://github.com/tylorismusic-commits/ember> .
+
+ember:preset_touch
+	a pset:Preset ;
+	lv2:appliesTo <https://github.com/tylorismusic-commits/ember> ;
+	rdfs:label "Touch of Glow" ;
+	rdfs:comment "A gentle first turn: a little low-end weight and a hint of upper-mid lift with almost no compression." ;
+	lv2:port [
+		lv2:symbol "amount" ; pset:value 18
+	] ,
+	lv2:port [
+		lv2:symbol "enable" ; pset:value 1
+	] .
+
+ember:preset_vocal
+	a pset:Preset ;
+	lv2:appliesTo <https://github.com/tylorismusic-commits/ember> ;
+	rdfs:label "Vocal Bus" ;
+	rdfs:comment "Presence-led finish for a vocal bus or backing stack, with light glue and a touch of harmonic air." ;
+	lv2:port [
+		lv2:symbol "amount" ; pset:value 35
+	] ,
+	lv2:port [
+		lv2:symbol "enable" ; pset:value 1
+	] .
+
+ember:preset_mix_bus
+	a pset:Preset ;
+	lv2:appliesTo <https://github.com/tylorismusic-commits/ember> ;
+	rdfs:label "Mix Bus Finish" ;
+	rdfs:comment "The everyday setting: broad weight, upper-mid presence, gentle glue and a finished top end." ;
+	lv2:port [
+		lv2:symbol "amount" ; pset:value 48
+	] ,
+	lv2:port [
+		lv2:symbol "enable" ; pset:value 1
+	] .
+
+ember:preset_drum_bus
+	a pset:Preset ;
+	lv2:appliesTo <https://github.com/tylorismusic-commits/ember> ;
+	rdfs:label "Drum Bus Glue" ;
+	rdfs:comment "More compression and harmonic density for a drum bus that needs to sit together." ;
+	lv2:port [
+		lv2:symbol "amount" ; pset:value 58
+	] ,
+	lv2:port [
+		lv2:symbol "enable" ; pset:value 1
+	] .
+
+ember:preset_master
+	a pset:Preset ;
+	lv2:appliesTo <https://github.com/tylorismusic-commits/ember> ;
+	rdfs:label "Mastering" ;
+	rdfs:comment "A finished, confident master-bus treatment.  Pair with your limiter of choice." ;
+	lv2:port [
+		lv2:symbol "amount" ; pset:value 72
+	] ,
+	lv2:port [
+		lv2:symbol "enable" ; pset:value 1
+	] .
+
+ember:preset_broken
+	a pset:Preset ;
+	lv2:appliesTo <https://github.com/tylorismusic-commits/ember> ;
+	rdfs:label "Broken Ember" ;
+	rdfs:comment "Everything at once: maximum tone, glue and harmonic drive.  Deliberately overdone." ;
+	lv2:port [
+		lv2:symbol "amount" ; pset:value 100
+	] ,
+	lv2:port [
+		lv2:symbol "enable" ; pset:value 1
+	] .
