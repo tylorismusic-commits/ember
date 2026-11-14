@@ -2,7 +2,7 @@
 
 [![build](https://github.com/tylorismusic-commits/ember/actions/workflows/build.yml/badge.svg)](https://github.com/tylorismusic-commits/ember/actions/workflows/build.yml)
 
-**Version 0.2.0** · [GitHub](https://github.com/tylorismusic-commits/ember) · GPL-3.0-or-later
+**Version 0.2.1** · [GitHub](https://github.com/tylorismusic-commits/ember) · GPL-3.0-or-later
 
 **Ember** is a free, open-source LV2/CLAP mastering finish for Linux: a single
 **Amount** knob that drives a complete mix-bus chain under the hood. Turn it up

@@ -161,7 +161,7 @@ struct ClapPlugin {
         "https://github.com/tylorismusic-commits/ember",
         "",
         "https://github.com/tylorismusic-commits/ember/issues",
-        "0.2.0",
+        "0.2.1",
         "One-knob mastering finish: EQ, glue compression and harmonic sheen in a single control.",
         features};
     return desc;
