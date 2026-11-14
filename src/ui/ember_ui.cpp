@@ -1007,7 +1007,7 @@ static void drawHeader(cairo_t* cr, const State& s) {
   textAt(cr, 24.0, 71.0, "ONE-KNOB MASTERING", 8.5, true, kMuted);
   drawPresetBar(cr, s);
   drawSkinChip(cr, s);
-  textAt(cr, 430.0, 62.0, "v0.1.2", 5.5, false, kMuted);
+  textAt(cr, 430.0, 62.0, "v0.2.0", 5.5, false, kMuted);
   drawInfoToggle(cr, s.showChain, s.infoHover != 0);
 
   // brushed-metal strip along the bottom of the header

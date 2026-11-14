@@ -16,8 +16,8 @@
 		lv2:CompressorPlugin ;
 	lv2:binary <ember.so> ;
 	lv2:majorVersion 0 ;
-	lv2:minorVersion 1 ;
-	lv2:microVersion 2 ;
+	lv2:minorVersion 2 ;
+	lv2:microVersion 0 ;
 	lv2:project <https://github.com/tylorismusic-commits/ember> ;
 	lv2:optionalFeature lv2:hardRTCapable , idpy:queue_draw , idpy:in_gui ;
 	lv2:extensionData idpy:interface ;
