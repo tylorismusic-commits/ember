@@ -79,9 +79,6 @@ static clap_param_info_flags paramFlags(const ParamInfo& p) {
   if (p.enumeration) {
     flags |= CLAP_PARAM_IS_STEPPED | CLAP_PARAM_IS_ENUM;
   }
-  if (p.index == PORT_ENABLE) {
-    flags |= CLAP_PARAM_IS_BYPASS;
-  }
   return flags;
 }
 
@@ -164,7 +161,7 @@ struct ClapPlugin {
         "https://github.com/tylorismusic-commits/ember",
         "",
         "https://github.com/tylorismusic-commits/ember/issues",
-        "0.1.1",
+        "0.1.2",
         "One-knob mastering finish: EQ, glue compression and harmonic sheen in a single control.",
         features};
     return desc;

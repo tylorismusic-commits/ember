@@ -2,7 +2,7 @@
 
 [![build](https://github.com/tylorismusic-commits/ember/actions/workflows/build.yml/badge.svg)](https://github.com/tylorismusic-commits/ember/actions/workflows/build.yml)
 
-**Version 0.1.1** · [GitHub](https://github.com/tylorismusic-commits/ember) · GPL-3.0-or-later
+**Version 0.1.2** · [GitHub](https://github.com/tylorismusic-commits/ember) · GPL-3.0-or-later
 
 **Ember** is a free, open-source LV2/CLAP mastering finish for Linux: a single
 **Amount** knob that drives a complete mix-bus chain under the hood. Turn it up
@@ -37,7 +37,8 @@ processor: musical, quick, and hard to make sound bad.
   compressor's auto makeup keeps the loudness musical instead of simply louder.
 - **Hidden output protection** — a soft clipper with a +0.2 dBFS ceiling.
   Below the knee it is linear, so normal programme material is untouched.
-- **Master bypass** — click-free crossfade, and the dry path is truly clean.
+- **Master bypass** — click-free crossfade, the dry path is truly clean, and it
+  is separate from the host's own FX bypass.
 - **Zero latency** — no oversampling, no lookahead, no latency reported to the
   host.
 - **Preset bar** — six starting points, applied directly through the UI so they
