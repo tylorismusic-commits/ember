@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdarg>
 #include <cstdint>
@@ -25,6 +26,7 @@
 
 #include "macro.hpp"
 #include "param_info.hpp"
+#include "hearth_theme.hpp"
 
 namespace ember {
 namespace ui {
@@ -37,32 +39,79 @@ constexpr double kPi = 3.14159265358979323846;
 
 // ---------------------------------------------------------------------------
 // Palette — the same vintage console faceplate as the rest of the family.
+// The values are loaded from the selected suite skin at runtime.
 // ---------------------------------------------------------------------------
-struct Color {
-  double r, g, b, a;
-};
+using Color = hearth::theme::Color;
 
-constexpr Color kBg{0.050, 0.060, 0.072, 1.0};
-constexpr Color kHeaderTop{0.105, 0.135, 0.165, 1.0};
-constexpr Color kHeaderBottom{0.060, 0.080, 0.100, 1.0};
-constexpr Color kPanelTop{0.285, 0.355, 0.425, 1.0};
-constexpr Color kPanelBottom{0.195, 0.255, 0.315, 1.0};
-constexpr Color kPanelEdge{0.430, 0.505, 0.580, 1.0};
-constexpr Color kPanelInner{0.560, 0.630, 0.690, 1.0};
-constexpr Color kText{0.945, 0.915, 0.835, 1.0};
-constexpr Color kCream{0.960, 0.915, 0.795, 1.0};
-constexpr Color kMuted{0.740, 0.710, 0.620, 1.0};
-constexpr Color kRed{0.720, 0.250, 0.215, 1.0};
-constexpr Color kRedDark{0.330, 0.100, 0.090, 1.0};
-constexpr Color kAmber{0.850, 0.650, 0.350, 1.0};
-constexpr Color kKnobTop{0.200, 0.220, 0.245, 1.0};
-constexpr Color kKnobBottom{0.045, 0.052, 0.060, 1.0};
-constexpr Color kKnobRing{0.560, 0.610, 0.660, 1.0};
-constexpr Color kSilver{0.720, 0.740, 0.750, 1.0};
-constexpr Color kTrack{0.035, 0.042, 0.050, 1.0};
-constexpr Color kMeterFace{0.930, 0.890, 0.780, 1.0};
-constexpr Color kMeterInk{0.090, 0.080, 0.065, 1.0};
-constexpr Color kGreen{0.400, 0.680, 0.430, 1.0};
+static Color kBg;
+static Color kBgTop;
+static Color kBgBottom;
+static Color kHeaderTop;
+static Color kHeaderBottom;
+static Color kPanelTop;
+static Color kPanelBottom;
+static Color kPanelEdge;
+static Color kPanelInner;
+static Color kPanelHeaderTop;
+static Color kPanelHeaderBottom;
+static Color kPanelHeaderText;
+static Color kText;
+static Color kCream;
+static Color kMuted;
+static Color kRed;
+static Color kRedDark;
+static Color kAmber;
+static Color kKnobTop;
+static Color kKnobBottom;
+static Color kKnobRing;
+static Color kSilver;
+static Color kTrack;
+static Color kMeterFace;
+static Color kMeterInk;
+static Color kGreen;
+static Color kHighlight;
+static Color kShadow;
+static Color kChassisLight;
+static Color kChassisMid;
+static Color kChassisDark;
+static double gTextureScale = 1.0;
+
+static void applyTheme(const hearth::theme::Theme& t) {
+  kBg = t.background;
+  kBgTop = t.background_top;
+  kBgBottom = t.background_bottom;
+  kHeaderTop = t.header_top;
+  kHeaderBottom = t.header_bottom;
+  kPanelTop = t.panel_top;
+  kPanelBottom = t.panel_bottom;
+  kPanelEdge = t.panel_edge;
+  kPanelInner = t.panel_inner;
+  kPanelHeaderTop = t.panel_header_top;
+  kPanelHeaderBottom = t.panel_header_bottom;
+  kPanelHeaderText = t.panel_header_text;
+  kText = t.text;
+  kCream = t.cream;
+  kMuted = t.muted;
+  kRed = t.accent;
+  kRedDark = t.accent_dark;
+  kAmber = t.amber;
+  kKnobTop = t.knob_top;
+  kKnobBottom = t.knob_bottom;
+  kKnobRing = t.knob_ring;
+  kSilver = t.silver;
+  kTrack = t.track;
+  kMeterFace = t.meter_face;
+  kMeterInk = t.meter_ink;
+  kGreen = t.green;
+  kHighlight = t.highlight;
+  kShadow = t.shadow;
+  kChassisLight = t.chassis_light;
+  kChassisMid = t.chassis_mid;
+  kChassisDark = t.chassis_dark;
+  const double base = 0.06;
+  gTextureScale = base > 0.0 ? std::min(std::max(t.texture_opacity / base, 0.0), 2.0)
+                            : 0.0;
+}
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -125,6 +174,9 @@ struct State {
   int presetHover = 0;
   int infoHover = 0;
   bool showChain = false;
+  bool skinHover = false;
+  char skinToast[64] = {};
+  double skinToastUntil = 0.0;
   bool dirty = true;
 };
 
@@ -146,6 +198,17 @@ static void initState(State& s) {
   s.meterOut = -60.0f;
   s.meterGrSmooth = 0.0f;
   s.vuSmooth = -60.0f;
+}
+
+static double nowSeconds() {
+  using namespace std::chrono;
+  return duration<double>(steady_clock::now().time_since_epoch()).count();
+}
+
+static void showSkinToast(State& s, const char* name) {
+  std::snprintf(s.skinToast, sizeof(s.skinToast), "%s",
+                name && *name ? name : "Classic");
+  s.skinToastUntil = nowSeconds() + 1.6;
 }
 
 static float normOf(const ParamInfo& p, float v) {
@@ -242,6 +305,7 @@ constexpr Rect kPresetLcd{170.0, 24.0, 190.0, 36.0};
 constexpr Rect kPresetPrev{366.0, 24.0, 26.0, 36.0};
 constexpr Rect kPresetNext{396.0, 24.0, 26.0, 36.0};
 constexpr Rect kInfoButton{462.0, 30.0, 44.0, 22.0};
+constexpr Rect kSkinChip{430.0, 24.0, 26.0, 26.0};
 
 static bool inRect(double x, double y, const Rect& r) {
   return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
@@ -324,7 +388,7 @@ static void drawScrew(cairo_t* cr, double x, double y) {
   cairo_line_to(cr, x + 2.2, y + 2.2);
   cairo_stroke(cr);
 
-  setColorA(cr, Color{1.0, 1.0, 1.0, 1.0}, 0.30);
+  setColorA(cr, kHighlight, 0.30);
   cairo_set_line_width(cr, 0.7);
   cairo_move_to(cr, x - 2.0, y - 2.6);
   cairo_line_to(cr, x + 1.6, y - 1.0);
@@ -383,8 +447,11 @@ static void drawPanel(cairo_t* cr, double x, double y, double w, double h,
   roundedRect(cr, x + 8.0, y + 8.0, w - 16.0, 27.0, 3.5);
   cairo_pattern_t* plate = cairo_pattern_create_linear(
       x, y + 8.0, x, y + 35.0);
-  cairo_pattern_add_color_stop_rgb(plate, 0.0, 0.070, 0.090, 0.110);
-  cairo_pattern_add_color_stop_rgb(plate, 1.0, 0.030, 0.040, 0.050);
+  cairo_pattern_add_color_stop_rgb(plate, 0.0, kPanelHeaderTop.r,
+                                   kPanelHeaderTop.g, kPanelHeaderTop.b);
+  cairo_pattern_add_color_stop_rgb(plate, 1.0, kPanelHeaderBottom.r,
+                                   kPanelHeaderBottom.g,
+                                   kPanelHeaderBottom.b);
   cairo_set_source(cr, plate);
   cairo_fill_preserve(cr);
   cairo_pattern_destroy(plate);
@@ -392,7 +459,7 @@ static void drawPanel(cairo_t* cr, double x, double y, double w, double h,
   cairo_set_line_width(cr, 0.8);
   cairo_stroke(cr);
 
-  textAt(cr, x + 16.0, y + 26.0, title, 11.0, true, kText);
+  textAt(cr, x + 16.0, y + 26.0, title, 11.0, true, kPanelHeaderText);
   setColor(cr, kRed);
   cairo_rectangle(cr, x + 16.0, y + 33.0, 24.0, 2.0);
   cairo_fill(cr);
@@ -416,55 +483,73 @@ static FT_Library gFtLibrary = nullptr;
 static FT_Face gLogoFace = nullptr;
 static cairo_font_face_t* gLogoFont = nullptr;
 static bool gLogoTried = false;
-static bool gKnobTried = false;
 
-static void loadKnobAsset(const char* bundlePath) {
-  if (gKnobTried || !bundlePath || !*bundlePath) {
-    return;
+static void destroyThemeAssets() {
+  if (gKnobImage) {
+    cairo_surface_destroy(gKnobImage);
+    gKnobImage = nullptr;
   }
-  gKnobTried = true;
-  std::string dir(bundlePath);
-  if (!dir.empty() && dir.back() != '/') {
-    dir += '/';
-  }
-  const std::string path = dir + "knob.png";
-  cairo_surface_t* surface = cairo_image_surface_create_from_png(path.c_str());
-  if (cairo_surface_status(surface) == CAIRO_STATUS_SUCCESS) {
-    gKnobImage = surface;
-    debugLog("loaded knob asset %s", path.c_str());
-  } else {
-    cairo_surface_destroy(surface);
-    debugLog("could not load knob asset %s", path.c_str());
+  if (gMetalTexture) {
+    cairo_surface_destroy(gMetalTexture);
+    gMetalTexture = nullptr;
   }
 }
 
-static void loadMetalTexture(const char* bundlePath) {
-  if (gMetalTexture || !bundlePath || !*bundlePath) {
-    return;
-  }
-  std::string dir(bundlePath);
-  if (!dir.empty() && dir.back() != '/') {
-    dir += '/';
-  }
-  const std::string path = dir + "metal.png";
-  cairo_surface_t* surface = cairo_image_surface_create_from_png(path.c_str());
-  if (cairo_surface_status(surface) == CAIRO_STATUS_SUCCESS) {
-    gMetalTexture = surface;
-  } else {
+static bool loadPng(const std::string& path, cairo_surface_t** out) {
+  if (path.empty()) return false;
+  cairo_surface_t* surface =
+      cairo_image_surface_create_from_png(path.c_str());
+  if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
     cairo_surface_destroy(surface);
+    return false;
   }
+  *out = surface;
+  return true;
+}
+
+static std::string bundleDirOf(const char* bundlePath) {
+  std::string dir(bundlePath ? bundlePath : "");
+  if (!dir.empty() && dir.back() != '/') dir += '/';
+  return dir;
+}
+
+static void loadThemeAssets(const char* bundlePath) {
+  destroyThemeAssets();
+  const auto& manager = hearth::theme::global();
+  const auto& t = manager.theme();
+  const std::string dir = bundleDirOf(bundlePath);
+  const std::string skinDir = manager.currentSkinDir();
+
+  if (!skinDir.empty() && !t.knob.empty()) {
+    loadPng(skinDir + "/" + t.knob, &gKnobImage);
+  }
+  if (!gKnobImage && !t.knob.empty()) {
+    loadPng(dir + t.knob, &gKnobImage);
+  }
+
+  if (t.texture_opacity > 0.0 && !t.texture.empty()) {
+    if (!skinDir.empty()) {
+      loadPng(skinDir + "/" + t.texture, &gMetalTexture);
+    }
+    if (!gMetalTexture) {
+      loadPng(dir + t.texture, &gMetalTexture);
+    }
+  }
+  debugLog("theme %s: skinDir=%s knob=%s texture=%s", t.id.c_str(),
+           skinDir.c_str(), gKnobImage ? "yes" : "no",
+           gMetalTexture ? "yes" : "no");
 }
 
 static void paintTexture(cairo_t* cr, double x, double y, double w, double h,
                          double alpha) {
-  if (!gMetalTexture) {
+  if (!gMetalTexture || gTextureScale <= 0.0) {
     return;
   }
   cairo_pattern_t* pattern = cairo_pattern_create_for_surface(gMetalTexture);
   cairo_pattern_set_extend(pattern, CAIRO_EXTEND_REPEAT);
   cairo_rectangle(cr, x, y, w, h);
   cairo_set_source(cr, pattern);
-  cairo_paint_with_alpha(cr, alpha);
+  cairo_paint_with_alpha(cr, alpha * gTextureScale);
   cairo_pattern_destroy(pattern);
 }
 
@@ -559,7 +644,7 @@ static void drawKnobBody(cairo_t* cr, double cx, double cy, double r,
   }
 
   // top rim light
-  setColorA(cr, Color{1.0, 1.0, 1.0, 1.0}, 0.10);
+  setColorA(cr, kHighlight, 0.10);
   cairo_set_line_width(cr, 1.2);
   cairo_arc(cr, cx, cy, r * 0.95, kPi * 1.12, kPi * 1.72);
   cairo_stroke(cr);
@@ -672,7 +757,7 @@ static void drawPowerButton(cairo_t* cr, const Widget& w, bool on,
   cairo_pattern_destroy(gloss);
   cairo_restore(cr);
 
-  setColorA(cr, Color{1.0, 1.0, 1.0, 1.0}, 0.18);
+  setColorA(cr, kHighlight, 0.18);
   cairo_set_line_width(cr, 0.8);
   cairo_move_to(cr, w.x + 9.0, w.y + 1.0);
   cairo_line_to(cr, w.x + w.w - 9.0, w.y + 1.0);
@@ -691,11 +776,10 @@ static void drawPowerButton(cairo_t* cr, const Widget& w, bool on,
     cairo_pattern_destroy(glow);
   }
   cairo_arc(cr, ledX, ledY, 3.4, 0.0, kPi * 2.0);
-  setColor(cr, on ? Color{1.0, 0.60, 0.45, 1.0}
-                  : Color{0.25, 0.08, 0.06, 1.0});
+  setColor(cr, on ? kAmber : kRedDark);
   cairo_fill(cr);
   cairo_arc(cr, ledX - 1.0, ledY - 1.0, 1.1, 0.0, kPi * 2.0);
-  setColorA(cr, Color{1.0, 1.0, 1.0, 1.0}, on ? 0.7 : 0.15);
+  setColorA(cr, kHighlight, on ? 0.7 : 0.15);
   cairo_fill(cr);
 
   textCentered(cr, w.x + w.w * 0.5 + 7.0, w.y + w.h * 0.5 + 3.5,
@@ -707,8 +791,10 @@ static void drawPresetArrow(cairo_t* cr, const Rect& r, bool left,
   roundedRect(cr, r.x, r.y, r.w, r.h, 3.0);
   cairo_pattern_t* pat = cairo_pattern_create_linear(r.x, r.y, r.x,
                                                      r.y + r.h);
-  cairo_pattern_add_color_stop_rgb(pat, 0.0, 0.34, 0.40, 0.46);
-  cairo_pattern_add_color_stop_rgb(pat, 1.0, 0.13, 0.17, 0.21);
+  cairo_pattern_add_color_stop_rgb(pat, 0.0, kChassisLight.r,
+                                   kChassisLight.g, kChassisLight.b);
+  cairo_pattern_add_color_stop_rgb(pat, 1.0, kChassisMid.r, kChassisMid.g,
+                                   kChassisMid.b);
   cairo_set_source(cr, pat);
   cairo_fill_preserve(cr);
   cairo_pattern_destroy(pat);
@@ -811,8 +897,10 @@ static void drawInfoToggle(cairo_t* cr, bool on, bool hovered) {
   cairo_pattern_t* pat = cairo_pattern_create_linear(
       kInfoButton.x, kInfoButton.y, kInfoButton.x,
       kInfoButton.y + kInfoButton.h);
-  cairo_pattern_add_color_stop_rgb(pat, 0.0, 0.34, 0.40, 0.46);
-  cairo_pattern_add_color_stop_rgb(pat, 1.0, 0.13, 0.17, 0.21);
+  cairo_pattern_add_color_stop_rgb(pat, 0.0, kChassisLight.r,
+                                   kChassisLight.g, kChassisLight.b);
+  cairo_pattern_add_color_stop_rgb(pat, 1.0, kChassisMid.r, kChassisMid.g,
+                                   kChassisMid.b);
   cairo_set_source(cr, pat);
   cairo_fill_preserve(cr);
   cairo_pattern_destroy(pat);
@@ -845,6 +933,55 @@ static void drawInfoToggle(cairo_t* cr, bool on, bool hovered) {
                on ? kAmber : kText);
 }
 
+static void drawSkinChip(cairo_t* cr, const State& s) {
+  const Rect& r = kSkinChip;
+  cairo_save(cr);
+  roundedRect(cr, r.x, r.y, r.w, r.h, 5.0);
+  setColorA(cr, kBg, 0.78);
+  cairo_fill_preserve(cr);
+  setColor(cr, s.skinHover ? kAmber : kPanelEdge);
+  cairo_set_line_width(cr, s.skinHover ? 1.2 : 0.8);
+  cairo_stroke(cr);
+
+  roundedRect(cr, r.x + 2.0, r.y + 2.0, r.w - 4.0, r.h - 4.0, 4.0);
+  cairo_clip(cr);
+  setColor(cr, kRed);
+  cairo_rectangle(cr, r.x + 2.0, r.y + 2.0, (r.w - 4.0) / 3.0, r.h - 4.0);
+  cairo_fill(cr);
+  setColor(cr, kAmber);
+  cairo_rectangle(cr, r.x + 2.0 + (r.w - 4.0) / 3.0, r.y + 2.0,
+                  (r.w - 4.0) / 3.0, r.h - 4.0);
+  cairo_fill(cr);
+  setColor(cr, kCream);
+  cairo_rectangle(cr, r.x + 2.0 + 2.0 * (r.w - 4.0) / 3.0, r.y + 2.0,
+                  (r.w - 4.0) / 3.0, r.h - 4.0);
+  cairo_fill(cr);
+  cairo_restore(cr);
+
+  setColorA(cr, kHighlight, 0.45);
+  cairo_set_line_width(cr, 0.7);
+  cairo_move_to(cr, r.x + 4.0, r.y + r.h - 3.5);
+  cairo_line_to(cr, r.x + r.w - 4.0, r.y + r.h - 3.5);
+  cairo_stroke(cr);
+}
+
+static void drawSkinToast(cairo_t* cr, const State& s) {
+  if (nowSeconds() >= s.skinToastUntil || s.skinToast[0] == '\0') {
+    return;
+  }
+  const double w = 200.0;
+  const double h = 20.0;
+  const double x = (UI_W - w) * 0.5;
+  const double y = 84.0;
+  roundedRect(cr, x, y, w, h, 5.0);
+  setColorA(cr, kBg, 0.94);
+  cairo_fill_preserve(cr);
+  setColorA(cr, kAmber, 0.9);
+  cairo_set_line_width(cr, 0.8);
+  cairo_stroke(cr);
+  textCentered(cr, x + w * 0.5, y + 13.0, s.skinToast, 7.0, true, kCream);
+}
+
 static void drawHeader(cairo_t* cr, const State& s) {
   cairo_pattern_t* pat = cairo_pattern_create_linear(0, 0, 0, 80);
   cairo_pattern_add_color_stop_rgb(pat, 0.0, kHeaderTop.r, kHeaderTop.g,
@@ -869,19 +1006,22 @@ static void drawHeader(cairo_t* cr, const State& s) {
   drawWordmark(cr, 22.0, 56.0, 38.0);
   textAt(cr, 24.0, 71.0, "ONE-KNOB MASTERING", 8.5, true, kMuted);
   drawPresetBar(cr, s);
+  drawSkinChip(cr, s);
   textAt(cr, 430.0, 62.0, "v0.1.2", 5.5, false, kMuted);
   drawInfoToggle(cr, s.showChain, s.infoHover != 0);
 
   // brushed-metal strip along the bottom of the header
   cairo_pattern_t* strip = cairo_pattern_create_linear(0, 76, 0, 80);
-  cairo_pattern_add_color_stop_rgb(strip, 0.0, 0.34, 0.40, 0.46);
-  cairo_pattern_add_color_stop_rgb(strip, 1.0, 0.06, 0.08, 0.10);
+  cairo_pattern_add_color_stop_rgb(strip, 0.0, kChassisLight.r,
+                                   kChassisLight.g, kChassisLight.b);
+  cairo_pattern_add_color_stop_rgb(strip, 1.0, kChassisDark.r, kChassisDark.g,
+                                   kChassisDark.b);
   cairo_rectangle(cr, 0, 76, UI_W, 4);
   cairo_set_source(cr, strip);
   cairo_fill(cr);
   cairo_pattern_destroy(strip);
 
-  setColorA(cr, Color{1.0, 1.0, 1.0, 1.0}, 0.16);
+  setColorA(cr, kHighlight, 0.16);
   cairo_set_line_width(cr, 0.8);
   cairo_move_to(cr, 14.0, 76.0);
   cairo_line_to(cr, UI_W - 14.0, 76.0);
@@ -986,11 +1126,11 @@ static void drawVu(cairo_t* cr, const Widget& w, float levelDb) {
   cairo_line_to(cr, x + width * 0.70, y - 20.0);
   cairo_line_to(cr, x + 2.0, y + height * 0.40);
   cairo_close_path(cr);
-  setColorA(cr, Color{1.0, 1.0, 1.0, 1.0}, 0.06);
+  setColorA(cr, kHighlight, 0.06);
   cairo_fill(cr);
   cairo_restore(cr);
 
-  setColorA(cr, Color{1.0, 1.0, 1.0, 1.0}, 0.16);
+  setColorA(cr, kHighlight, 0.16);
   roundedRect(cr, x, y, width, height, 4.0);
   cairo_set_line_width(cr, 0.8);
   cairo_stroke(cr);
@@ -1011,8 +1151,7 @@ static void drawVu(cairo_t* cr, const Widget& w, float levelDb) {
     cairo_pattern_destroy(glow);
   }
   cairo_arc(cr, x + width - 10.0, y + 10.0, 3.2, 0.0, kPi * 2.0);
-  setColor(cr, peak ? Color{1.0, 0.25, 0.18, 1.0}
-                    : Color{0.25, 0.18, 0.15, 1.0});
+  setColor(cr, peak ? kRed : kRedDark);
   cairo_fill(cr);
 }
 
@@ -1049,7 +1188,7 @@ static void drawGr(cairo_t* cr, const Widget& w, float grDb) {
     cairo_pattern_destroy(red);
   }
 
-  setColorA(cr, Color{1.0, 1.0, 1.0, 1.0}, 0.16);
+  setColorA(cr, kHighlight, 0.16);
   cairo_rectangle(cr, w.x + 1.0, w.y + 1.0, 2.0, w.h - 2.0);
   cairo_fill(cr);
 
@@ -1098,7 +1237,7 @@ static void drawChainRow(cairo_t* cr, double y, const char* label,
     cairo_set_source(cr, fill);
     cairo_fill(cr);
     cairo_pattern_destroy(fill);
-    setColorA(cr, Color{1.0, 1.0, 1.0, 1.0}, 0.22);
+    setColorA(cr, kHighlight, 0.22);
     cairo_rectangle(cr, barX + 2.0, y + 2.0, (barW - 4.0) * n, 1.0);
     cairo_fill(cr);
   }
@@ -1112,10 +1251,14 @@ static void drawChassis(cairo_t* cr) {
   roundedRect(cr, 4.0, 4.0, UI_W - 8.0, UI_H - 8.0, 14.0);
   roundedRect(cr, 12.0, 12.0, UI_W - 24.0, UI_H - 24.0, 10.0);
   cairo_pattern_t* metal = cairo_pattern_create_linear(0, 0, UI_W, UI_H);
-  cairo_pattern_add_color_stop_rgb(metal, 0.0, 0.30, 0.35, 0.40);
-  cairo_pattern_add_color_stop_rgb(metal, 0.45, 0.09, 0.12, 0.15);
-  cairo_pattern_add_color_stop_rgb(metal, 0.55, 0.16, 0.20, 0.24);
-  cairo_pattern_add_color_stop_rgb(metal, 1.0, 0.26, 0.31, 0.36);
+  cairo_pattern_add_color_stop_rgb(metal, 0.0, kChassisLight.r,
+                                   kChassisLight.g, kChassisLight.b);
+  cairo_pattern_add_color_stop_rgb(metal, 0.45, kChassisDark.r, kChassisDark.g,
+                                   kChassisDark.b);
+  cairo_pattern_add_color_stop_rgb(metal, 0.55, kChassisMid.r, kChassisMid.g,
+                                   kChassisMid.b);
+  cairo_pattern_add_color_stop_rgb(metal, 1.0, kChassisLight.r,
+                                   kChassisLight.g, kChassisLight.b);
   cairo_set_source(cr, metal);
   cairo_fill(cr);
   cairo_pattern_destroy(metal);
@@ -1130,7 +1273,7 @@ static void drawChassis(cairo_t* cr) {
   cairo_set_line_width(cr, 1.0);
   cairo_stroke(cr);
 
-  setColorA(cr, Color{1.0, 1.0, 1.0, 1.0}, 0.18);
+  setColorA(cr, kHighlight, 0.18);
   cairo_set_line_width(cr, 0.8);
   cairo_move_to(cr, 18.0, 5.5);
   cairo_line_to(cr, UI_W - 18.0, 5.5);
@@ -1150,8 +1293,9 @@ static void render(const State& s, cairo_t* cr) {
   cairo_set_antialias(cr, CAIRO_ANTIALIAS_BEST);
 
   cairo_pattern_t* bg = cairo_pattern_create_linear(0, 0, 0, UI_H);
-  cairo_pattern_add_color_stop_rgb(bg, 0.0, 0.095, 0.115, 0.135);
-  cairo_pattern_add_color_stop_rgb(bg, 1.0, 0.022, 0.028, 0.035);
+  cairo_pattern_add_color_stop_rgb(bg, 0.0, kBgTop.r, kBgTop.g, kBgTop.b);
+  cairo_pattern_add_color_stop_rgb(bg, 1.0, kBgBottom.r, kBgBottom.g,
+                                   kBgBottom.b);
   cairo_rectangle(cr, 0, 0, UI_W, UI_H);
   cairo_set_source(cr, bg);
   cairo_fill(cr);
@@ -1237,6 +1381,7 @@ static void render(const State& s, cairo_t* cr) {
   textCentered(cr, 512.0, 850.0, "CLASS-A FINISH", 6.3, true, kAmber);
 
   drawChassis(cr);
+  drawSkinToast(cr, s);
 }
 
 // ---------------------------------------------------------------------------
@@ -1307,7 +1452,17 @@ struct X11UI {
   const LV2UI_Resize* hostResize = nullptr;
   bool resizeRequested = false;
   float scaleFactor = 1.0f;
+  int configPollCounter = 0;
 };
+
+static void refreshSkin(X11UI* ui) {
+  if (!ui) return;
+  auto& skin = hearth::theme::global();
+  applyTheme(skin.theme());
+  loadThemeAssets(skin.bundlePath().c_str());
+  showSkinToast(ui->state, skin.theme().name.c_str());
+  ui->state.dirty = true;
+}
 
 static X11UI* get(LV2UI_Handle handle) {
   return static_cast<X11UI*>(handle);
@@ -1410,6 +1565,12 @@ static void handleButtonPress(X11UI* ui, XButtonEvent& ev) {
   toLogical(ui, ev.x, ev.y, x, y);
 
   if (ev.button == Button1) {
+    if (inRect(x, y, kSkinChip)) {
+      const int direction = (ev.state & ShiftMask) ? -1 : 1;
+      hearth::theme::global().cycle(direction);
+      refreshSkin(ui);
+      return;
+    }
     if (inRect(x, y, kInfoButton)) {
       ui->state.showChain = !ui->state.showChain;
       ui->state.dirty = true;
@@ -1481,6 +1642,12 @@ static void handleMotion(X11UI* ui, XMotionEvent& ev) {
   double y = 0.0;
   toLogical(ui, ev.x, ev.y, x, y);
 
+  const bool skinHover = inRect(x, y, kSkinChip);
+  if (skinHover != ui->state.skinHover) {
+    ui->state.skinHover = skinHover;
+    ui->state.dirty = true;
+  }
+
   int presetHover = 0;
   if (inRect(x, y, kPresetPrev)) {
     presetHover = 1;
@@ -1488,6 +1655,9 @@ static void handleMotion(X11UI* ui, XMotionEvent& ev) {
     presetHover = 2;
   } else if (inRect(x, y, kPresetLcd)) {
     presetHover = 3;
+  }
+  if (skinHover) {
+    presetHover = 0;
   }
   if (presetHover != ui->state.presetHover) {
     ui->state.presetHover = presetHover;
@@ -1500,7 +1670,7 @@ static void handleMotion(X11UI* ui, XMotionEvent& ev) {
     ui->state.dirty = true;
   }
 
-  const int hover = (presetHover || infoHover) ? -1 : hitTest(x, y);
+  const int hover = (presetHover || infoHover || skinHover) ? -1 : hitTest(x, y);
   if (hover != ui->state.hover) {
     ui->state.hover = hover;
     ui->state.dirty = true;
@@ -1559,10 +1729,11 @@ static void processEvents(X11UI* ui) {
         break;
       case LeaveNotify:
         if (ui->state.hover != -1 || ui->state.presetHover != 0 ||
-            ui->state.infoHover != 0) {
+            ui->state.infoHover != 0 || ui->state.skinHover) {
           ui->state.hover = -1;
           ui->state.presetHover = 0;
           ui->state.infoHover = 0;
+          ui->state.skinHover = false;
           ui->state.dirty = true;
         }
         break;
@@ -1578,6 +1749,19 @@ static int idle(LV2UI_Handle handle) {
     return 1;
   }
   processEvents(ui);
+
+  if (++ui->configPollCounter >= 30) {
+    ui->configPollCounter = 0;
+    if (hearth::theme::global().reloadIfConfigChanged()) {
+      refreshSkin(ui);
+    }
+  }
+
+  if (ui->state.skinToast[0] != '\0' &&
+      nowSeconds() >= ui->state.skinToastUntil) {
+    ui->state.skinToast[0] = '\0';
+    ui->state.dirty = true;
+  }
 
   const float prevGr = ui->state.meterGrSmooth;
   const float prevOut = ui->state.vuSmooth;
@@ -1678,8 +1862,10 @@ static LV2UI_Handle uiInstantiate(const LV2UI_Descriptor*, const char*,
                                   LV2UI_Controller controller,
                                   LV2UI_Widget* widget,
                                   const LV2_Feature* const* features) {
-  loadKnobAsset(bundlePath);
-  loadMetalTexture(bundlePath);
+  auto& skin = hearth::theme::global();
+  skin.init(bundlePath ? bundlePath : "", "ember");
+  applyTheme(skin.theme());
+  loadThemeAssets(bundlePath);
   loadLogoFont(bundlePath);
   X11UI* ui = new X11UI();
   initState(ui->state);
@@ -1882,8 +2068,10 @@ extern "C" LV2_SYMBOL_EXPORT const LV2UI_Descriptor* lv2ui_descriptor(uint32_t i
 int main(int argc, char** argv) {
   using namespace ember;
   using namespace ember::ui;
-  loadKnobAsset("assets/");
-  loadMetalTexture("assets/");
+  auto& skin = hearth::theme::global();
+  skin.init("assets/", "ember");
+  applyTheme(skin.theme());
+  loadThemeAssets("assets/");
   loadLogoFont("assets/fonts/");
   State state;
   initState(state);
