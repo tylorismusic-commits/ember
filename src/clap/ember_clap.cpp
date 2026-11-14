@@ -97,6 +97,9 @@ struct ClapPlugin {
   std::atomic<bool> pendingFlag[PORT_COUNT];
   std::atomic<float> pendingValue[PORT_COUNT];
   std::atomic<float> grDb{0.0f};
+  std::atomic<float> meterGr{0.0f};
+  std::atomic<float> meterOut{-60.0f};
+  std::atomic<bool> meterDirty{false};
 
   double sampleRate = 48000.0;
   bool active = false;
@@ -161,7 +164,7 @@ struct ClapPlugin {
         "https://github.com/tylorismusic-commits/ember",
         "",
         "https://github.com/tylorismusic-commits/ember/issues",
-        "0.1.0",
+        "0.1.1",
         "One-knob mastering finish: EQ, glue compression and harmonic sheen in a single control.",
         features};
     return desc;
@@ -195,6 +198,9 @@ struct ClapPlugin {
     s->strip.setTargets(s->params);
     s->strip.reset();
     s->grDb.store(0.0f);
+    s->meterGr.store(0.0f);
+    s->meterOut.store(-60.0f);
+    s->meterDirty.store(true);
     s->active = true;
     return true;
   }
@@ -204,6 +210,9 @@ struct ClapPlugin {
     if (s) {
       s->strip.reset();
       s->grDb.store(0.0f);
+      s->meterGr.store(0.0f);
+      s->meterOut.store(-60.0f);
+      s->meterDirty.store(true);
       s->active = false;
     }
   }
@@ -216,6 +225,9 @@ struct ClapPlugin {
     if (s) {
       s->strip.reset();
       s->grDb.store(0.0f);
+      s->meterGr.store(0.0f);
+      s->meterOut.store(-60.0f);
+      s->meterDirty.store(true);
     }
   }
 
@@ -313,9 +325,9 @@ struct ClapPlugin {
     float outDb = -60.0f;
     s->strip.process(inL, inR, outL, outR, frames, gr, outDb);
     s->grDb.store(gr);
-    static int processCount = 0;
-    if ((processCount++ & 127) == 0) {
-    }
+    s->meterGr.store(gr);
+    s->meterOut.store(outDb);
+    s->meterDirty.store(true);
     return CLAP_PROCESS_CONTINUE;
   }
 
@@ -596,6 +608,12 @@ struct ClapPlugin {
               const float value = pendingValue[i].load();
               uiDesc->port_event(ui, i, sizeof(float), 0, &value);
             }
+          }
+          if (meterDirty.exchange(false)) {
+            float gr = meterGr.load();
+            float out = meterOut.load();
+            uiDesc->port_event(ui, PORT_METER_GR, sizeof(float), 0, &gr);
+            uiDesc->port_event(ui, PORT_METER_OUT, sizeof(float), 0, &out);
           }
           if (uiIdle) {
             uiIdle->idle(ui);

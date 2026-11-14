@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(ember VERSION 0.1.0 LANGUAGES CXX)
+project(ember VERSION 0.1.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -172,6 +172,22 @@ if(TARGET ember_clap_bundle)
   install(TARGETS ember_clap LIBRARY DESTINATION "${CLAP_DIR}")
   install(DIRECTORY "${CMAKE_BINARY_DIR}/clap/Ember.resources"
           DESTINATION "${CLAP_DIR}")
+endif()
+
+if(X11_FOUND AND XVFB_RUN)
+  add_executable(ember_clap_host_test
+    test/clap_host_test.cpp
+  )
+  target_include_directories(ember_clap_host_test PRIVATE
+    "${CMAKE_SOURCE_DIR}/third_party/clap/include")
+  target_link_libraries(ember_clap_host_test PRIVATE PkgConfig::X11
+    ${CMAKE_DL_LIBS})
+  add_dependencies(ember_clap_host_test ember_clap_bundle)
+  add_test(NAME ember_clap_host
+    COMMAND "${XVFB_RUN}" -a -s "-screen 0 1600x1000x24"
+      "$<TARGET_FILE:ember_clap_host_test>"
+      "${CMAKE_BINARY_DIR}/clap/Ember.clap"
+      "com.tylorismusic.ember")
 endif()
 
 add_executable(ember_dsp_test

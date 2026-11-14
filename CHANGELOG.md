@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1
+
+- CLAP builds now feed the plugin's own VU and gain-reduction meters, so the
+  native UI behaves the same in CLAP and LV2.
+- The MASTERING CHAIN detail panel is hidden by default; the new **INFO**
+  button in the header shows or hides it.
+- Added a CLAP host test covering gain-reduction reporting and UI embedding.
+
 ## 0.1.0
 
 - Initial Ember release: a one-knob mastering finish for the Hearth family.

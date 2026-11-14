@@ -120,8 +120,12 @@ int main(int argc, char** argv) {
   }
   XSync(display, False);
 
-  // Preset next, a turn of the big knob, and a bypass click.
+  // Reveal the mastering-chain details, then load the next preset, turn the
+  // big knob, and click bypass.
   const int writesBefore = g_writes;
+  XTestFakeMotionEvent(display, -1, 528, 44, CurrentTime);
+  XTestFakeButtonEvent(display, Button1, True, CurrentTime);
+  XTestFakeButtonEvent(display, Button1, False, CurrentTime);
   XTestFakeMotionEvent(display, -1, 460, 47, CurrentTime);
   XTestFakeButtonEvent(display, Button1, True, CurrentTime);
   XTestFakeButtonEvent(display, Button1, False, CurrentTime);

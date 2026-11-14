@@ -2,7 +2,7 @@
 
 [![build](https://github.com/tylorismusic-commits/ember/actions/workflows/build.yml/badge.svg)](https://github.com/tylorismusic-commits/ember/actions/workflows/build.yml)
 
-**Version 0.1.0** · [GitHub](https://github.com/tylorismusic-commits/ember) · GPL-3.0-or-later
+**Version 0.1.1** · [GitHub](https://github.com/tylorismusic-commits/ember) · GPL-3.0-or-later
 
 **Ember** is a free, open-source LV2/CLAP mastering finish for Linux: a single
 **Amount** knob that drives a complete mix-bus chain under the hood. Turn it up
@@ -45,11 +45,13 @@ processor: musical, quick, and hard to make sound bad.
   as LV2 preset resources.
 - **Native X11/Cairo UI** — the family chassis, original knob artwork,
   brushed-metal texture, Jost ExtraBold wordmark, glass VU, glue-reduction
-  meter, and five "under the hood" stage meters. The UI is resizable and
-  scales from its 620×900 logical layout.
+  meter, and an optional five-stage "under the hood" detail panel. The
+  detail panel is hidden by default; click **INFO** in the header to reveal
+  it. The UI is resizable and scales from its 620×900 logical layout.
 - **LV2 and CLAP builds** — CLAP includes `clap.gain-adjustment-metering` so
   REAPER and other CLAP hosts can show glue gain reduction on their track
-  meters.
+  meters. The CLAP build also feeds the plugin's own VU and GR meters, so the
+  UI behaves exactly like the LV2 build.
 
 ## Signal flow
 

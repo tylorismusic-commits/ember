@@ -123,6 +123,8 @@ struct State {
   int presetIndex = -1;
   bool presetDirty = false;
   int presetHover = 0;
+  int infoHover = 0;
+  bool showChain = false;
   bool dirty = true;
 };
 
@@ -239,6 +241,7 @@ struct Rect {
 constexpr Rect kPresetLcd{170.0, 24.0, 190.0, 36.0};
 constexpr Rect kPresetPrev{366.0, 24.0, 26.0, 36.0};
 constexpr Rect kPresetNext{396.0, 24.0, 26.0, 36.0};
+constexpr Rect kInfoButton{462.0, 30.0, 44.0, 22.0};
 
 static bool inRect(double x, double y, const Rect& r) {
   return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
@@ -797,6 +800,51 @@ static void drawPresetBar(cairo_t* cr, const State& s) {
   drawPresetArrow(cr, kPresetNext, false, s.presetHover == 2);
 }
 
+static void drawInfoToggle(cairo_t* cr, bool on, bool hovered) {
+  roundedRect(cr, kInfoButton.x + 1.0, kInfoButton.y + 2.0, kInfoButton.w,
+              kInfoButton.h, 4.0);
+  setColorA(cr, kBg, 0.45);
+  cairo_fill(cr);
+
+  roundedRect(cr, kInfoButton.x, kInfoButton.y, kInfoButton.w,
+              kInfoButton.h, 4.0);
+  cairo_pattern_t* pat = cairo_pattern_create_linear(
+      kInfoButton.x, kInfoButton.y, kInfoButton.x,
+      kInfoButton.y + kInfoButton.h);
+  cairo_pattern_add_color_stop_rgb(pat, 0.0, 0.34, 0.40, 0.46);
+  cairo_pattern_add_color_stop_rgb(pat, 1.0, 0.13, 0.17, 0.21);
+  cairo_set_source(cr, pat);
+  cairo_fill_preserve(cr);
+  cairo_pattern_destroy(pat);
+  setColor(cr, hovered || on ? kAmber : kPanelEdge);
+  cairo_set_line_width(cr, hovered ? 1.4 : 0.9);
+  cairo_stroke(cr);
+
+  cairo_save(cr);
+  roundedRect(cr, kInfoButton.x, kInfoButton.y, kInfoButton.w,
+              kInfoButton.h, 4.0);
+  cairo_clip(cr);
+  cairo_pattern_t* gloss = cairo_pattern_create_linear(
+      kInfoButton.x, kInfoButton.y, kInfoButton.x,
+      kInfoButton.y + kInfoButton.h * 0.6);
+  cairo_pattern_add_color_stop_rgba(gloss, 0.0, 1.0, 1.0, 1.0, 0.18);
+  cairo_pattern_add_color_stop_rgba(gloss, 1.0, 1.0, 1.0, 1.0, 0.0);
+  cairo_rectangle(cr, kInfoButton.x, kInfoButton.y, kInfoButton.w,
+                  kInfoButton.h * 0.6);
+  cairo_set_source(cr, gloss);
+  cairo_fill(cr);
+  cairo_pattern_destroy(gloss);
+  cairo_restore(cr);
+
+  cairo_arc(cr, kInfoButton.x + 8.0,
+            kInfoButton.y + kInfoButton.h * 0.5, 2.0, 0.0, kPi * 2.0);
+  setColor(cr, on ? kAmber : kMuted);
+  cairo_fill(cr);
+  textCentered(cr, kInfoButton.x + 27.0,
+               kInfoButton.y + kInfoButton.h * 0.5 + 2.8, "INFO", 7.2, true,
+               on ? kAmber : kText);
+}
+
 static void drawHeader(cairo_t* cr, const State& s) {
   cairo_pattern_t* pat = cairo_pattern_create_linear(0, 0, 0, 80);
   cairo_pattern_add_color_stop_rgb(pat, 0.0, kHeaderTop.r, kHeaderTop.g,
@@ -821,9 +869,8 @@ static void drawHeader(cairo_t* cr, const State& s) {
   drawWordmark(cr, 22.0, 56.0, 38.0);
   textAt(cr, 24.0, 71.0, "ONE-KNOB MASTERING", 8.5, true, kMuted);
   drawPresetBar(cr, s);
-  textAt(cr, 430.0, 42.0, "FINISH", 6.5, true, kMuted);
-  textAt(cr, 430.0, 52.0, "GLUE", 6.5, false, kMuted);
-  textAt(cr, 430.0, 62.0, "v0.1", 5.5, false, kMuted);
+  textAt(cr, 430.0, 62.0, "v0.1.1", 5.5, false, kMuted);
+  drawInfoToggle(cr, s.showChain, s.infoHover != 0);
 
   // brushed-metal strip along the bottom of the header
   cairo_pattern_t* strip = cairo_pattern_create_linear(0, 76, 0, 80);
@@ -1124,8 +1171,10 @@ static void render(const State& s, cairo_t* cr) {
 
   drawHeader(cr, s);
 
-  drawPanel(cr, 14.0, 84.0, 442.0, 478.0, "FINISH");
-  drawPanel(cr, 14.0, 570.0, 442.0, 322.0, "MASTERING CHAIN");
+  drawPanel(cr, 14.0, 84.0, 442.0, s.showChain ? 478.0 : 808.0, "FINISH");
+  if (s.showChain) {
+    drawPanel(cr, 14.0, 570.0, 442.0, 322.0, "MASTERING CHAIN");
+  }
   drawPanel(cr, 464.0, 84.0, 142.0, 808.0, "OUTPUT");
 
   const float amount = s.values[PORT_AMOUNT] / 100.0f;
@@ -1151,28 +1200,35 @@ static void render(const State& s, cairo_t* cr) {
     }
   }
 
-  // Small line under the big knob.
-  textCentered(cr, 235.0, 530.0, "TURN TO FINISH  /  ONE KNOB, FIVE STAGES",
-               7.2, false, kMuted);
+  // Small line under the big knob.  When the stage panel is hidden the
+  // finish panel expands and the line moves down to keep the layout balanced.
+  textCentered(cr, 235.0, s.showChain ? 530.0 : 812.0,
+               "TURN TO FINISH  /  ONE KNOB, FIVE STAGES", 7.2, false, kMuted);
+  if (!s.showChain) {
+    textCentered(cr, 235.0, 838.0, "STAGE DETAILS HIDDEN  /  CLICK INFO",
+                 6.3, false, kMuted);
+  }
 
-  // Under-the-hood stage meters.
-  const float low = smoothStep(0.0f, 0.90f, amount);
-  const float presence = smoothStep(0.04f, 0.90f, amount);
-  char detail[24];
+  if (s.showChain) {
+    // Under-the-hood stage meters.
+    const float low = smoothStep(0.0f, 0.90f, amount);
+    const float presence = smoothStep(0.04f, 0.90f, amount);
+    char detail[24];
 
-  std::snprintf(detail, sizeof(detail), "%+.1f dB", m.lowGainDb);
-  drawChainRow(cr, 626.0, "LOW END", low, detail);
-  std::snprintf(detail, sizeof(detail), "%+.1f dB", m.presenceGainDb);
-  drawChainRow(cr, 674.0, "PRESENCE", presence, detail);
-  std::snprintf(detail, sizeof(detail), "%+.1f dB", m.airGainDb);
-  drawChainRow(cr, 722.0, "AIR", m.airAmount, detail);
-  std::snprintf(detail, sizeof(detail), "%d%%", static_cast<int>(m.glueAmount * 100.0f + 0.5f));
-  drawChainRow(cr, 770.0, "GLUE", m.glueAmount, detail);
-  std::snprintf(detail, sizeof(detail), "%d%%", static_cast<int>(m.harmonicAmount * 100.0f + 0.5f));
-  drawChainRow(cr, 818.0, "HARMONICS", m.harmonicAmount, detail);
+    std::snprintf(detail, sizeof(detail), "%+.1f dB", m.lowGainDb);
+    drawChainRow(cr, 626.0, "LOW END", low, detail);
+    std::snprintf(detail, sizeof(detail), "%+.1f dB", m.presenceGainDb);
+    drawChainRow(cr, 674.0, "PRESENCE", presence, detail);
+    std::snprintf(detail, sizeof(detail), "%+.1f dB", m.airGainDb);
+    drawChainRow(cr, 722.0, "AIR", m.airAmount, detail);
+    std::snprintf(detail, sizeof(detail), "%d%%", static_cast<int>(m.glueAmount * 100.0f + 0.5f));
+    drawChainRow(cr, 770.0, "GLUE", m.glueAmount, detail);
+    std::snprintf(detail, sizeof(detail), "%d%%", static_cast<int>(m.harmonicAmount * 100.0f + 0.5f));
+    drawChainRow(cr, 818.0, "HARMONICS", m.harmonicAmount, detail);
 
-  textAt(cr, 30.0, 874.0, "EQ  /  COMPRESSION  /  HARMONIC FINISH", 6.3,
-         false, kMuted);
+    textAt(cr, 30.0, 874.0, "EQ  /  COMPRESSION  /  HARMONIC FINISH", 6.3,
+           false, kMuted);
+  }
 
   // Output-column notes.
   textAt(cr, 478.0, 324.0, "GLUE", 6.2, true, kMuted);
@@ -1354,6 +1410,11 @@ static void handleButtonPress(X11UI* ui, XButtonEvent& ev) {
   toLogical(ui, ev.x, ev.y, x, y);
 
   if (ev.button == Button1) {
+    if (inRect(x, y, kInfoButton)) {
+      ui->state.showChain = !ui->state.showChain;
+      ui->state.dirty = true;
+      return;
+    }
     if (inRect(x, y, kPresetPrev)) {
       cyclePreset(ui, -1);
       return;
@@ -1433,7 +1494,13 @@ static void handleMotion(X11UI* ui, XMotionEvent& ev) {
     ui->state.dirty = true;
   }
 
-  const int hover = presetHover ? -1 : hitTest(x, y);
+  const int infoHover = inRect(x, y, kInfoButton) ? 1 : 0;
+  if (infoHover != ui->state.infoHover) {
+    ui->state.infoHover = infoHover;
+    ui->state.dirty = true;
+  }
+
+  const int hover = (presetHover || infoHover) ? -1 : hitTest(x, y);
   if (hover != ui->state.hover) {
     ui->state.hover = hover;
     ui->state.dirty = true;
@@ -1491,9 +1558,11 @@ static void processEvents(X11UI* ui) {
         handleButtonRelease(ui);
         break;
       case LeaveNotify:
-        if (ui->state.hover != -1 || ui->state.presetHover != 0) {
+        if (ui->state.hover != -1 || ui->state.presetHover != 0 ||
+            ui->state.infoHover != 0) {
           ui->state.hover = -1;
           ui->state.presetHover = 0;
+          ui->state.infoHover = 0;
           ui->state.dirty = true;
         }
         break;
